@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8086" doc:name="HTTP Listener Configuration"/>
+    <flow name="dataweaveexampleFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/test" doc:name="HTTP"/>
+        <set-variable variableName="originalpayload" value="#[payload]" mimeType="application/json" doc:name="Set Original Payload"/>
+        <dw:transform-message doc:name="Get Profit">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+"Result":[
+{
+"Service line number":"4",
+"Profit":23
+},
+{
+"Service line number":"3",
+"Profit":44
+},
+{
+"Service line number":"2",
+"Profit":76
+},
+{
+"Service line number":"1",
+"Profit":19
+}
+]
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <set-variable variableName="variable1" value="#[payload]" mimeType="application/json" doc:name="Store Profit"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+"Workforce":[
+{
+"Service line number":"4",
+"Employees":200
+},
+{
+"Service line number":"3",
+"Employees":35
+},
+{
+"Service line number":"1",
+"Employees":342
+},
+{
+"Service line number":"2",
+"Employees":65
+}
+]
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <set-variable variableName="variable2" value="#[payload]" mimeType="application/json" doc:name="Store Workforce Details"/>
+        <set-payload value="#[flowVars.originalpayload]" mimeType="application/json" doc:name="Set Original Payload"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+OrganizationData: payload.QuarterStatus map ((payload1 , indexOfPayload1) -> {
+"Service line number": payload1."Service line number",
+Investment: payload1.Investment,
+(flowVars.variable2.Workforce filter ($."Service line number" == payload1."Service line number")  map ((variable2 , indexOfVariable2) -> {
+Employees: variable2.Employees
+})),
+(flowVars.variable1.Result filter ($."Service line number" == payload1."Service line number")  map ((variable1 , indexOfVariable1) -> {
+Profit: variable1.Profit
+}))
+})
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+</mule>
